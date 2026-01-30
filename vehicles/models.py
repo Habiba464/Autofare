@@ -13,7 +13,7 @@ class Vehicle(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPES)
     license_plate = models.CharField(max_length=20, unique=True)
-    # Add other fields like make/model if needed
+   
 
     @classmethod
     def get_owner_by_plate(cls, plate):

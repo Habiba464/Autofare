@@ -20,10 +20,13 @@ class Trip(models.Model):
     status = models.CharField(max_length=20, default='Pending') # Paid, Unpaid
 
     def calculate_fare(self):
-        base_fares = {
-            'car': 5.00,
-            'truck': 10.00,
+        base_fares = {  # search for real numbers later
+            'car': 10.00,
+            'truck': 20.00,
             'motorcycle': 3.00,
+            'bus': 8.00,
+            'minibus': 6.00,
+            'van': 7.00,
         }
         return base_fares.get(self.vehicle.vehicle_type, 5.00)  # Default to car fare
 
