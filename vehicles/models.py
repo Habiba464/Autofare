@@ -13,6 +13,8 @@ class Vehicle(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPES)
     license_plate = models.CharField(max_length=20, unique=True)
+    vechile_color = models.CharField(max_length=20 , default='white')
+    vechile_model = models.CharField(max_length=50)
    
 
     @classmethod

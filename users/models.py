@@ -3,8 +3,11 @@ from django.contrib.auth.models import User
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    name = models.CharField(max_length=100, blank=True, default='')
+    email = models.EmailField(unique=True, null=True, blank=True)
     national_id = models.CharField(max_length=50, unique=True)
     phone = models.CharField(max_length=20)
+
 
 class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
