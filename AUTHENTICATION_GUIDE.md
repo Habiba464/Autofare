@@ -3,10 +3,10 @@
 ## Overview
 
 The API now includes complete authentication support with:
-- ✅ User signup with password hashing
-- ✅ User login with JWT token generation
-- ✅ Token refresh mechanism
-- ✅ Protected endpoints (optional)
+-  User signup with password hashing
+-  User login with JWT token generation
+- Token refresh mechanism
+- Protected endpoints (optional)
 
 ---
 
@@ -388,33 +388,7 @@ curl -X POST http://localhost:8000/api/users/auth/refresh_token/ \
 
 ---
 
-## Security Features
 
-### Password Security
-- ✅ Hashed with PBKDF2 (Django default)
-- ✅ Salted for each user
-- ✅ Never stored as plain text
-- ✅ Minimum 8 characters enforced
-
-### Token Security
-- ✅ JWT with HS256 algorithm
-- ✅ Signed with SECRET_KEY
-- ✅ Expiration time enforced
-- ✅ Refresh tokens for session extension
-
-### Data Validation
-- ✅ Email format validation
-- ✅ Unique email enforcement
-- ✅ Password confirmation check
-- ✅ Credentials validation on login
-
-### Database
-- ✅ Atomic transactions
-- ✅ User isolation
-- ✅ Data integrity checks
-- ✅ CSRF protection (settings configured)
-
----
 
 ## Error Handling
 
@@ -499,54 +473,6 @@ REST_FRAMEWORK = {
 }
 ```
 
----
 
-## Best Practices
-
-1. **Store Tokens Securely**
-   - Use httpOnly cookies (not accessible to JavaScript)
-   - Use secure storage in mobile apps
-
-2. **Handle Token Expiration**
-   - Catch JWT expiration errors
-   - Automatically refresh tokens
-   - Redirect to login when refresh fails
-
-3. **Logout Implementation**
-   - Clear tokens from client-side storage
-   - Optional: Blacklist tokens on server
-
-4. **Password Management**
-   - Use password reset endpoints (not yet implemented)
-   - Enforce password change on first login
-   - Regular password updates
-
-5. **Token Lifecycle**
-   - Short-lived access tokens (60 min)
-   - Long-lived refresh tokens (7 days)
-   - Auto-refresh before expiration
-
----
-
-## Migration from Old API
-
-Old endpoints without authentication still work:
-- `POST /api/users` - Create user (no password)
-- Other endpoints remain accessible
-
-New authentication-enabled endpoints:
-- `POST /api/users/auth/signup/` - Signup with password
-- `POST /api/users/auth/login/` - Get JWT tokens
-- `POST /api/users/auth/refresh_token/` - Refresh tokens
-
----
-
-## Future Enhancements
-
-- [ ] Password reset endpoint
-- [ ] Email verification on signup
-- [ ] Two-factor authentication
-- [ ] Social login (Google, Facebook, etc.)
-- [ ] Token blacklisting
 - [ ] Rate limiting on login attempts
 - [ ] OAuth 2.0 support
