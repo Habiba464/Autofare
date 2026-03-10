@@ -6,7 +6,7 @@ import "./Homepage.css";
 
 // Import your video
 import heroVideo from "../../assets/videos/Intrance Video.mp4";
-
+import mustLogo from "../../assets/PicTures/Must_Without_BackGround.jpg";
 function Homepage() {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);
@@ -52,10 +52,15 @@ function Homepage() {
     <div className="homepage">
       {/* NAVIGATION BAR */}
       <nav className="navbar">
-        <div className="nav-container">
-          <div className="nav-logo">
-            <span className="logo-text">GatePass</span>
-          </div>
+       <div className="nav-container">
+        <div className="nav-logo" onClick={() => navigate("/")}>
+          <img  
+            src={mustLogo} 
+            alt="MUST Logo" 
+            className="nav-logo-img" 
+          />
+          <span className="logo-text">MUST-Gate</span>
+        </div>
 
           <ul className="nav-menu">
             <li>
@@ -101,19 +106,22 @@ function Homepage() {
         </video>
 
         <div className="hero-overlay"></div>
-
+          <div className="hero-logo-container" style={{ textAlign: 'center', marginBottom: '15px' }}>
+          
+          </div>
         <div className="hero-content">
           <div className="hero-badge">
             <span>🇪🇬 Official Government Initiative</span>
           </div>
 
           <h1 className="hero-title">
+            Where Innovation is a MUST <br />
             Effortless Gate Payments —<br />
             Drive In, We'll Handle the Rest
           </h1>
 
           <p className="hero-subtitle">
-            Automatic, secure payment at every gate — no cash, no delays.
+            The MUST-Have Solution for Smart Traffic — no cash, no delays.
             <br />
             Register once and your vehicle's entry fees are charged
             automatically as you pass through.
