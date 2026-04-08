@@ -2,7 +2,29 @@
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import API from "../../APi/axiosConfig";
+import { ENDPOINTS } from "../../APi/endpoints";
+import {
+  validateNationalIdEG,
+  validatePhoneDigits,
+} from "../../utils/paymentValidation";
 import "./Signup.css";
+
+function firstApiErrorMessage(data) {
+  if (!data || typeof data !== "object") return null;
+  if (Array.isArray(data.non_field_errors) && data.non_field_errors[0]) {
+    return data.non_field_errors[0];
+  }
+  if (typeof data.detail === "string") return data.detail;
+  for (const [key, val] of Object.entries(data)) {
+    if (Array.isArray(val) && val[0]) return `${key.replace(/_/g, " ")}: ${val[0]}`;
+    if (typeof val === "object" && val !== null && !Array.isArray(val)) {
+      const nested = firstApiErrorMessage(val);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
 
 function Signup() {
   const navigate = useNavigate();
@@ -28,6 +50,8 @@ function Signup() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -39,22 +63,68 @@ function Signup() {
 
   const handleNextStep = (e) => {
     e.preventDefault();
+    setError("");
     if (step < 3) {
       setStep(step + 1);
     }
   };
 
   const handlePrevStep = () => {
+    setError("");
     if (step > 1) {
       setStep(step - 1);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Signup Data:", formData);
-    // Redirect to User Dashboard after successful signup
-    navigate("/dashboard");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    const nidErr = validateNationalIdEG(formData.nationalId);
+    if (nidErr) {
+      setError(nidErr);
+      return;
+    }
+    const phErr = validatePhoneDigits(formData.phone);
+    if (phErr) {
+      setError(phErr);
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await API.post(ENDPOINTS.SIGNUP, {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        nationalId: formData.nationalId,
+        vehiclePlate: formData.vehiclePlate,
+        vehicleType: formData.vehicleType,
+        vehicleModel: formData.vehicleModel,
+        vehicleColor: formData.vehicleColor,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        agreeToTerms: formData.agreeToTerms,
+      });
+      if (response.status === 201 || response.status === 200) {
+        localStorage.setItem("token", response.data.access);
+        localStorage.setItem("userName", response.data.name);
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      const msg =
+        firstApiErrorMessage(err.response?.data) ||
+        "Could not create account. Please try again.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -150,6 +220,15 @@ function Signup() {
                   : "Account Security"}
               </p>
             </div>
+
+            {error && (
+              <div className="error-message-ui">
+                <span className="error-icon" aria-hidden="true">
+                  ⚠️
+                </span>
+                {error}
+              </div>
+            )}
 
             {/* Multi-Step Form */}
             <form
@@ -444,9 +523,14 @@ function Signup() {
                   type="submit"
                   className="submit-button"
                   style={{ flex: step === 1 ? 1 : "initial" }}
+                  disabled={loading}
                 >
-                  {step === 3 ? "Create Account" : "Continue"}
-                  <span className="button-arrow">→</span>
+                  {step === 3
+                    ? loading
+                      ? "Creating account..."
+                      : "Create Account"
+                    : "Continue"}
+                  {!loading && <span className="button-arrow">→</span>}
                 </button>
               </div>
             </form>

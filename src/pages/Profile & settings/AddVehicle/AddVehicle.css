@@ -188,6 +188,12 @@
   }
 }
 
+.add-vehicle-error {
+  color: #b91c1c;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .wallet-main-content {

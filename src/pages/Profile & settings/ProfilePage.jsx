@@ -1,6 +1,6 @@
 // src/pages/Profile & settings/ProfilePage.jsx
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Mail,
@@ -12,61 +12,103 @@ import {
 } from "lucide-react";
 import Sidebar from "../../components/Sidebar";
 import "../../components/Sidebar.css";
+import API from "../../APi/axiosConfig";
+import { ENDPOINTS } from "../../APi/endpoints";
+import { useMe } from "../../hooks/useMe";
 import "./ProfilePage.css";
 
 function ProfilePage() {
   const navigate = useNavigate();
+  const { me, loading, refetch, error } = useMe();
+  const [toggleError, setToggleError] = useState("");
 
-  const userData = {
-    name: "John Smith",
-    email: "john.smith@email.com",
-    phone: "+1 (555) 123-4567",
-    fleetId: "FL-2024",
-  };
+  useEffect(() => {
+    if (!loading && !localStorage.getItem("token")) {
+      navigate("/login");
+    }
+  }, [loading, navigate]);
 
-  // Vehicles with toggleable status
-  const [vehicles, setVehicles] = useState([
-    {
-      id: 1,
-      plate: "ABC-1234",
-      model: "Toyota Camry",
-      status: "Active",
-    },
-    {
-      id: 2,
-      plate: "XYZ-5678",
-      model: "Honda Civic",
-      status: "Inactive",
-    },
-  ]);
+  const userData = useMemo(
+    () =>
+      me
+        ? {
+            name: me.name,
+            email: me.email,
+            phone: me.phone,
+            fleetId: me.fleet_id,
+            photoUrl: me.photo_url || null,
+          }
+        : {
+            name: localStorage.getItem("userName") || "…",
+            email: "",
+            phone: "",
+            fleetId: "…",
+            photoUrl: null,
+          },
+    [me]
+  );
 
-  const quickStats = {
-    totalTrips: 247,
-    totalFines: 3,
-    totalFare: 1847,
-  };
+  const avatarInitials = useMemo(() => {
+    const n = (me?.name || userData.name || "").trim();
+    if (!n) return "?";
+    return n
+      .split(/\s+/)
+      .map((p) => p[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }, [me?.name, userData.name]);
 
-  const toggleVehicleStatus = (vehicleId) => {
-    setVehicles((prevVehicles) =>
-      prevVehicles.map((vehicle) =>
-        vehicle.id === vehicleId
-          ? {
-              ...vehicle,
-              status: vehicle.status === "Active" ? "Inactive" : "Active",
-            }
-          : vehicle
-      )
-    );
-  };
+  const vehicles = me?.vehicles ?? [];
+  const quickStats = me?.stats
+    ? {
+        totalTrips: me.stats.total_trips,
+        totalFines: me.stats.unpaid_violations,
+        totalFare: parseFloat(me.stats.total_fare_paid || 0),
+      }
+    : { totalTrips: 0, totalFines: 0, totalFare: 0 };
 
-  const handleViewVehicle = (vehicleId) => {
-    // Placeholder for view vehicle action
-    console.log("View vehicle:", vehicleId);
+  const toggleVehicleStatus = async (vehicleId) => {
+    setToggleError("");
+    const v = vehicles.find((x) => x.id === vehicleId);
+    if (!v) return;
+    try {
+      await API.patch(`${ENDPOINTS.VEHICLES}${vehicleId}/`, {
+        is_active: !v.is_active,
+      });
+      await refetch();
+    } catch {
+      setToggleError("Could not update vehicle status.");
+    }
   };
 
   const handleEditProfile = () => {
     navigate("/dashboard/profile/edit");
   };
+
+  if (loading && !me) {
+    return (
+      <div className="wallet-page-container">
+        <Sidebar userData={userData} />
+        <main className="wallet-main-content">
+          <p style={{ padding: "2rem" }}>Loading profile…</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (error && !me) {
+    return (
+      <div className="wallet-page-container">
+        <Sidebar userData={userData} />
+        <main className="wallet-main-content">
+          <p style={{ padding: "2rem", color: "#b91c1c" }}>
+            Could not load profile. Please sign in again.
+          </p>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="wallet-page-container">
@@ -77,11 +119,33 @@ function ProfilePage() {
           <h1>Profile Settings</h1>
         </header>
 
-        {/* User Info Card */}
+        {toggleError && (
+          <p style={{ color: "#b91c1c", marginBottom: "1rem" }}>{toggleError}</p>
+        )}
+
         <section className="profile-user-card">
           <div className="profile-avatar-section">
-            <div className="profile-avatar-placeholder">IMG 96x96</div>
+            {me?.photo_url ? (
+              <img
+                src={me.photo_url}
+                alt=""
+                className="profile-avatar-image"
+              />
+            ) : (
+              <div className="profile-avatar-placeholder profile-avatar-initials">
+                {avatarInitials}
+              </div>
+            )}
             <div className="profile-avatar-actions">
+              <button
+                type="button"
+                className="profile-avatar-action-btn"
+                onClick={handleEditProfile}
+                title="Change photo"
+                aria-label="Change profile photo"
+              >
+                📷
+              </button>
             </div>
           </div>
 
@@ -90,12 +154,20 @@ function ProfilePage() {
             <div className="profile-contact-info">
               <div className="profile-contact-item">
                 <Mail size={18} className="profile-contact-icon" />
-                <span>{userData.email}</span>
+                <span>{userData.email || "—"}</span>
               </div>
               <div className="profile-contact-item">
                 <Phone size={18} className="profile-contact-icon" />
-                <span>{userData.phone}</span>
+                <span>{userData.phone || "—"}</span>
               </div>
+              {me?.national_id ? (
+                <div className="profile-contact-item">
+                  <span className="profile-national-icon" aria-hidden="true">
+                    🪪
+                  </span>
+                  <span>National ID: {me.national_id}</span>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -109,37 +181,38 @@ function ProfilePage() {
           </button>
         </section>
 
-        {/* Two Column Layout */}
         <div className="profile-content-grid">
-          {/* Left Column: Linked Vehicles */}
           <section className="profile-vehicles-card">
             <h3 className="profile-card-title">Linked Vehicles</h3>
             <div className="profile-vehicles-list">
-              {vehicles.map((vehicle) => (
-                <div key={vehicle.id} className="profile-vehicle-item">
-                  <div className="profile-vehicle-info">
-                    <span className="profile-vehicle-plate">{vehicle.plate}</span>
-                    <span className="profile-vehicle-model">{vehicle.model}</span>
+              {vehicles.length === 0 ? (
+                <p style={{ color: "#64748b" }}>No vehicles linked yet.</p>
+              ) : (
+                vehicles.map((vehicle) => (
+                  <div key={vehicle.id} className="profile-vehicle-item">
+                    <div className="profile-vehicle-info">
+                      <span className="profile-vehicle-plate">{vehicle.plate}</span>
+                      <span className="profile-vehicle-model">{vehicle.model}</span>
+                    </div>
+                    <div className="profile-vehicle-actions">
+                      <button
+                        type="button"
+                        className={`profile-vehicle-status ${
+                          vehicle.status === "Active"
+                            ? "profile-vehicle-status-active"
+                            : "profile-vehicle-status-inactive"
+                        }`}
+                        onClick={() => toggleVehicleStatus(vehicle.id)}
+                      >
+                        {vehicle.status}
+                      </button>
+                    </div>
                   </div>
-                  <div className="profile-vehicle-actions">
-                    <button
-                      type="button"
-                      className={`profile-vehicle-status ${
-                        vehicle.status === "Active"
-                          ? "profile-vehicle-status-active"
-                          : "profile-vehicle-status-inactive"
-                      }`}
-                      onClick={() => toggleVehicleStatus(vehicle.id)}
-                    >
-                      {vehicle.status}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
 
-          {/* Right Column: Quick Stats */}
           <section className="profile-stats-card">
             <h3 className="profile-card-title">Quick Stats</h3>
             <div className="profile-stats-grid">
@@ -156,7 +229,7 @@ function ProfilePage() {
                   <AlertTriangle size={24} className="profile-stat-icon" />
                 </div>
                 <h3 className="profile-stat-value">{quickStats.totalFines}</h3>
-                <p className="profile-stat-label">Total Fines</p>
+                <p className="profile-stat-label">Unpaid Violations</p>
               </div>
 
               <div className="profile-stat-item">
@@ -164,7 +237,11 @@ function ProfilePage() {
                   <DollarSign size={24} className="profile-stat-icon" />
                 </div>
                 <h3 className="profile-stat-value">
-                  {quickStats.totalFare.toLocaleString()} EGP
+                  {quickStats.totalFare.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
+                  EGP
                 </h3>
                 <p className="profile-stat-label">Total Fare</p>
               </div>

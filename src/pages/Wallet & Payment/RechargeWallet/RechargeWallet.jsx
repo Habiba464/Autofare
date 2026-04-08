@@ -1,22 +1,23 @@
 // src/pages/Wallet & Payment/RechargeWallet/RechargeWallet.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../../components/Sidebar";
 import "../../../components/Sidebar.css";
+import API from "../../../APi/axiosConfig";
+import { ENDPOINTS } from "../../../APi/endpoints";
+import { useMe } from "../../../hooks/useMe";
+import { validateRechargeForm } from "../../../utils/paymentValidation";
 import "./RechargeWallet.css";
-
-const QUICK_AMOUNTS = [10, 20, 50, 100];
 
 function RechargeWallet() {
   const navigate = useNavigate();
+  const { me, loading: meLoading } = useMe();
   const [selectedAmount, setSelectedAmount] = useState(null);
   const [customAmount, setCustomAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("new"); // "saved" | "new"
   const [isProcessing, setIsProcessing] = useState(false);
-  const [toast, setToast] = useState(null); // { type: 'success' | 'error', message }
-  
-  // Payment form fields
+  const [toast, setToast] = useState(null);
+
   const [cardholderName, setCardholderName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
@@ -24,20 +25,29 @@ function RechargeWallet() {
   const [billingAddress, setBillingAddress] = useState("");
   const [saveCard, setSaveCard] = useState(false);
 
+  const userData = useMemo(
+    () =>
+      me
+        ? { name: me.name, fleetId: me.fleet_id, photoUrl: me.photo_url || null }
+        : {
+            name: localStorage.getItem("userName") || "…",
+            fleetId: "…",
+            photoUrl: null,
+          },
+    [me]
+  );
+
+  useEffect(() => {
+    if (!meLoading && !localStorage.getItem("token")) {
+      navigate("/login");
+    }
+  }, [meLoading, navigate]);
+
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
+    const t = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(t);
   }, [toast]);
-
-  const userData = {
-    name: "John Driver",
-    fleetId: "FL-2024"
-  };
-  const savedCards = [
-    { id: "1", last4: "1234", brand: "Visa" },
-    { id: "2", last4: "5678", brand: "Mastercard" },
-  ];
 
   const getEffectiveAmount = () => {
     if (selectedAmount != null) return selectedAmount;
@@ -47,53 +57,76 @@ function RechargeWallet() {
 
   const handleProceed = async () => {
     const amount = getEffectiveAmount();
-    if (amount <= 0) {
-      setToast({ type: "error", message: "Please select or enter a valid amount." });
+    const msg = validateRechargeForm({
+      amount,
+      cardholderName,
+      cardNumber,
+      expiryDate,
+      cvv,
+      billingAddress,
+    });
+    if (msg) {
+      setToast({ type: "error", message: msg });
       return;
-    }
-    if (paymentMethod === "new") {
-      if (!cardholderName || !cardNumber || !expiryDate || !cvv || !billingAddress) {
-        setToast({ type: "error", message: "Please fill all payment details." });
-        return;
-      }
     }
     setIsProcessing(true);
     setToast(null);
-    await new Promise((r) => setTimeout(r, 1500));
-    setIsProcessing(false);
-    setToast({ type: "success", message: `Successfully recharged ${amount.toFixed(2)} EGP` });
-    setSelectedAmount(null);
-    setCustomAmount("");
-    setCardholderName("");
-    setCardNumber("");
-    setExpiryDate("");
-    setCvv("");
-    setBillingAddress("");
-    setSaveCard(false);
+    try {
+      const { data } = await API.post(ENDPOINTS.WALLET_RECHARGE, {
+        amount: amount.toFixed(2),
+        cardholder_name: cardholderName.trim(),
+        card_number: cardNumber.replace(/\s/g, ""),
+        expiry_date: expiryDate.trim(),
+        cvv,
+        billing_address: billingAddress.trim(),
+      });
+      setToast({
+        type: "success",
+        message: `Successfully recharged ${amount.toFixed(2)} EGP. New balance: ${data.balance} EGP`,
+      });
+      setSelectedAmount(null);
+      setCustomAmount("");
+      setCardholderName("");
+      setCardNumber("");
+      setExpiryDate("");
+      setCvv("");
+      setBillingAddress("");
+      setSaveCard(false);
+      setTimeout(() => navigate("/dashboard/wallet"), 1200);
+    } catch (err) {
+      const d = err.response?.data;
+      let first =
+        (Array.isArray(d?.non_field_errors) && d.non_field_errors[0]) ||
+        d?.detail ||
+        null;
+      if (!first && d && typeof d === "object") {
+        const arr = Object.values(d).find((v) => Array.isArray(v) && v.length);
+        first = arr ? arr[0] : null;
+      }
+      first = first || "Payment could not be processed.";
+      setToast({ type: "error", message: first });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCancel = () => {
     navigate("/dashboard/wallet");
   };
 
-  // Format card number with spaces
   const formatCardNumber = (value) => {
     const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
+    const match = v.match(/\d{0,19}/);
+    const raw = match ? match[0] : "";
     const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
+    for (let i = 0, len = raw.length; i < len; i += 4) {
+      parts.push(raw.substring(i, i + 4));
     }
-    if (parts.length) {
-      return parts.join(" ");
-    }
-    return v;
+    return parts.join(" ");
   };
 
   const handleCardNumberChange = (e) => {
-    const formatted = formatCardNumber(e.target.value);
-    setCardNumber(formatted);
+    setCardNumber(formatCardNumber(e.target.value));
   };
 
   return (
@@ -117,14 +150,36 @@ function RechargeWallet() {
         </header>
 
         <div className="recharge-two-columns">
-          {/* LEFT COLUMN */}
           <div className="recharge-left-column">
-            {/* Recharge Amount Card */}
             <section className="recharge-amount-card">
               <div className="recharge-card-header-blue">
                 <h3 className="recharge-card-header-title">Recharge Amount</h3>
               </div>
               <div className="recharge-card-body">
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                  {[10, 20, 50, 100].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAmount(n);
+                        setCustomAmount("");
+                      }}
+                      style={{
+                        padding: "8px 14px",
+                        borderRadius: 8,
+                        border:
+                          selectedAmount === n
+                            ? "2px solid #2563eb"
+                            : "1px solid #cbd5e1",
+                        background: selectedAmount === n ? "#eff6ff" : "#fff",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {n} EGP
+                    </button>
+                  ))}
+                </div>
                 <div className="recharge-amount-input-wrapper">
                   <input
                     id="recharge-amount-input"
@@ -132,15 +187,11 @@ function RechargeWallet() {
                     min="1"
                     step="0.01"
                     placeholder="Enter amount (EGP)"
-                    value={selectedAmount != null ? selectedAmount : customAmount}
+                    value={selectedAmount != null ? String(selectedAmount) : customAmount}
                     onChange={(e) => {
                       const val = e.target.value;
-                      if (selectedAmount != null) {
-                        setSelectedAmount(null);
-                        setCustomAmount(val);
-                      } else {
-                        setCustomAmount(val);
-                      }
+                      setSelectedAmount(null);
+                      setCustomAmount(val);
                     }}
                     className="recharge-amount-input"
                   />
@@ -149,7 +200,6 @@ function RechargeWallet() {
               </div>
             </section>
 
-            {/* Card Preview */}
             <section className="recharge-card-preview-card">
               <h3 className="recharge-section-title">Card Preview</h3>
               <div className="recharge-card-preview">
@@ -162,11 +212,12 @@ function RechargeWallet() {
             </section>
           </div>
 
-          {/* RIGHT COLUMN */}
           <div className="recharge-right-column">
             <section className="recharge-payment-form-section">
-              <h3 className="recharge-section-title">Payment Method - Credit/Debit Card</h3>
-              
+              <h3 className="recharge-section-title">
+                Payment Method - Credit/Debit Card
+              </h3>
+
               <div className="recharge-form-group">
                 <label htmlFor="cardholder-name" className="recharge-form-label">
                   Cardholder Name
@@ -174,6 +225,7 @@ function RechargeWallet() {
                 <input
                   id="cardholder-name"
                   type="text"
+                  autoComplete="cc-name"
                   placeholder="Enter cardholder name"
                   value={cardholderName}
                   onChange={(e) => setCardholderName(e.target.value)}
@@ -189,6 +241,8 @@ function RechargeWallet() {
                   <input
                     id="card-number"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-number"
                     placeholder="1234 5678 9012 3456"
                     value={cardNumber}
                     onChange={handleCardNumberChange}
@@ -207,6 +261,8 @@ function RechargeWallet() {
                   <input
                     id="expiry-date"
                     type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-exp"
                     placeholder="MM/YY"
                     value={expiryDate}
                     onChange={(e) => {
@@ -226,11 +282,14 @@ function RechargeWallet() {
                   </label>
                   <input
                     id="cvv"
-                    type="text"
+                    type="password"
+                    autoComplete="cc-csc"
                     placeholder="123"
                     value={cvv}
-                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").substring(0, 3))}
-                    maxLength={3}
+                    onChange={(e) =>
+                      setCvv(e.target.value.replace(/\D/g, "").substring(0, 4))
+                    }
+                    maxLength={4}
                     className="recharge-form-input"
                   />
                 </div>
@@ -259,14 +318,15 @@ function RechargeWallet() {
                     className="recharge-toggle-input"
                   />
                   <span className="recharge-toggle-slider"></span>
-                  <span className="recharge-toggle-text">Save card for future payments</span>
+                  <span className="recharge-toggle-text">
+                    Save card for future payments (not stored in this demo)
+                  </span>
                 </label>
               </div>
             </section>
           </div>
         </div>
 
-        {/* FOOTER */}
         <div className="recharge-footer">
           <div className="recharge-footer-buttons">
             <button
@@ -288,7 +348,7 @@ function RechargeWallet() {
           </div>
           <div className="recharge-security-note">
             <span className="recharge-security-icon">🛡️</span>
-            <span>Your payment information is securely encrypted.</span>
+            <span>Your payment is validated on the server before crediting your wallet.</span>
           </div>
         </div>
 

@@ -1,159 +1,101 @@
 // src/pages/Trips/User/TripHistory.jsx
 
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Calendar, Car, DollarSign, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Calendar,
+  Car,
+  DollarSign,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import Sidebar from "../../../components/Sidebar";
 import "../../../components/Sidebar.css";
+import API from "../../../APi/axiosConfig";
+import { ENDPOINTS } from "../../../APi/endpoints";
+import { useMe } from "../../../hooks/useMe";
 import "./TripHistory.css";
 
 function TripHistory() {
   const navigate = useNavigate();
+  const { me, loading: meLoading } = useMe();
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const userData = {
-    name: "John Driver",
-    fleetId: "FL-2024",
-  };
+  const [allTrips, setAllTrips] = useState([]);
+  const [stats, setStats] = useState({
+    totalTrips: 0,
+    totalFarePaid: 0,
+    totalViolations: 0,
+  });
+  const [loadError, setLoadError] = useState("");
+  const [loadingTrips, setLoadingTrips] = useState(true);
 
-  // Mock stats
-  const stats = {
-    totalTrips: 247,
-    totalFarePaid: 12450,
-    totalViolations: 7340,
-  };
+  const userData = useMemo(
+    () =>
+      me
+        ? { name: me.name, fleetId: me.fleet_id, photoUrl: me.photo_url || null }
+        : {
+            name: localStorage.getItem("userName") || "…",
+            fleetId: "…",
+            photoUrl: null,
+          },
+    [me]
+  );
 
-  // Mock trips data
-  const allTrips = [
-    {
-      id: "TR-2024-001",
-      dateTime: "Oct 25, 2024 09:45 AM",
-      vehiclePlate: "ABC-123",
-      gateName: "Gate A - North Entrance",
-      fareAmount: 25.5,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-002",
-      dateTime: "Oct 25, 2024 11:20 AM",
-      vehiclePlate: "XYZ-789",
-      gateName: "Gate B - South Exit",
-      fareAmount: 18.75,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-003",
-      dateTime: "Oct 24, 2024 02:15 PM",
-      vehiclePlate: "DEF-456",
-      gateName: "Gate C - East Entrance",
-      fareAmount: 32.0,
-      status: "Not Paid",
-      violationAmount: 50.0,
-    },
-    {
-      id: "TR-2024-004",
-      dateTime: "Oct 24, 2024 04:30 PM",
-      vehiclePlate: "GHI-789",
-      gateName: "Gate A - North Entrance",
-      fareAmount: 15.25,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-005",
-      dateTime: "Oct 23, 2024 08:15 AM",
-      vehiclePlate: "JKL-012",
-      gateName: "Gate D - West Exit",
-      fareAmount: 28.5,
-      status: "Not Paid",
-      violationAmount: 75.0,
-    },
-    {
-      id: "TR-2024-006",
-      dateTime: "Oct 23, 2024 10:45 AM",
-      vehiclePlate: "MNO-345",
-      gateName: "Gate B - South Exit",
-      fareAmount: 22.0,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-007",
-      dateTime: "Oct 22, 2024 01:20 PM",
-      vehiclePlate: "PQR-678",
-      gateName: "Gate C - East Entrance",
-      fareAmount: 19.5,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-008",
-      dateTime: "Oct 22, 2024 03:45 PM",
-      vehiclePlate: "STU-901",
-      gateName: "Gate A - North Entrance",
-      fareAmount: 35.0,
-      status: "Not Paid",
-      violationAmount: 100.0,
-    },
-    {
-      id: "TR-2024-009",
-      dateTime: "Oct 21, 2024 07:30 AM",
-      vehiclePlate: "VWX-234",
-      gateName: "Gate D - West Exit",
-      fareAmount: 20.75,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-010",
-      dateTime: "Oct 21, 2024 09:15 AM",
-      vehiclePlate: "YZA-567",
-      gateName: "Gate B - South Exit",
-      fareAmount: 27.5,
-      status: "Paid",
-      violationAmount: 0,
-    },
-    {
-      id: "TR-2024-011",
-      dateTime: "Oct 20, 2024 12:00 PM",
-      vehiclePlate: "BCD-890",
-      gateName: "Gate C - East Entrance",
-      fareAmount: 24.0,
-      status: "Not Paid",
-      violationAmount: 60.0,
-    },
-    {
-      id: "TR-2024-012",
-      dateTime: "Oct 20, 2024 02:30 PM",
-      vehiclePlate: "EFG-123",
-      gateName: "Gate A - North Entrance",
-      fareAmount: 16.5,
-      status: "Paid",
-      violationAmount: 0,
-    },
-  ];
+  useEffect(() => {
+    if (!meLoading && !localStorage.getItem("token")) {
+      navigate("/login");
+    }
+  }, [meLoading, navigate]);
+
+  const fetchTripData = useCallback(async (from, to) => {
+    if (!localStorage.getItem("token")) return;
+    setLoadingTrips(true);
+    setLoadError("");
+    try {
+      const params = {};
+      if (from) params.from = from;
+      if (to) params.to = to;
+      const { data } = await API.get(ENDPOINTS.TRIPS_HISTORY, { params });
+      setStats(
+        data.stats || {
+          totalTrips: 0,
+          totalFarePaid: 0,
+          totalViolations: 0,
+        }
+      );
+      setAllTrips(data.trips || []);
+    } catch {
+      setLoadError("Could not load trips.");
+      setAllTrips([]);
+    } finally {
+      setLoadingTrips(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTripData("", "");
+  }, [fetchTripData]);
 
   const handleApplyFilters = () => {
-    // Filter logic would go here
     setCurrentPage(1);
+    fetchTripData(dateFrom, dateTo);
   };
 
   const handleResetFilters = () => {
     setDateFrom("");
     setDateTo("");
     setCurrentPage(1);
+    fetchTripData("", "");
   };
 
-  // Pagination logic
-  const totalPages = Math.ceil(allTrips.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(allTrips.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentTrips = allTrips.slice(startIndex, endIndex);
+  const currentTrips = allTrips.slice(startIndex, startIndex + itemsPerPage);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -173,7 +115,10 @@ function TripHistory() {
           </div>
         </header>
 
-        {/* Filter Section */}
+        {loadError && (
+          <p style={{ color: "#b91c1c", marginBottom: "1rem" }}>{loadError}</p>
+        )}
+
         <section className="trip-filter-section">
           <div className="trip-filter-row">
             <div className="trip-filter-group">
@@ -225,7 +170,6 @@ function TripHistory() {
           </div>
         </section>
 
-        {/* Stats Cards */}
         <section className="trip-stats-section">
           <div className="trip-stat-card trip-stat-blue">
             <div className="trip-stat-icon-wrapper trip-stat-icon-blue">
@@ -244,7 +188,11 @@ function TripHistory() {
             <div className="trip-stat-content">
               <p className="trip-stat-label">Total Fare Paid</p>
               <h2 className="trip-stat-value">
-                {stats.totalFarePaid.toLocaleString()} EGP
+                {Number(stats.totalFarePaid).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                EGP
               </h2>
             </div>
           </div>
@@ -254,63 +202,77 @@ function TripHistory() {
               <AlertTriangle className="trip-stat-icon" size={24} />
             </div>
             <div className="trip-stat-content">
-              <p className="trip-stat-label">Total Violations</p>
+              <p className="trip-stat-label">Unpaid Violations (est.)</p>
               <h2 className="trip-stat-value">
-                {stats.totalViolations.toLocaleString()} EGP
+                {Number(stats.totalViolations).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                EGP
               </h2>
             </div>
           </div>
         </section>
 
-        {/* Trips Table */}
         <section className="trip-table-section">
           <div className="trip-table-wrapper">
-            <table className="trip-table">
-              <thead>
-                <tr>
-                  <th>Trip ID</th>
-                  <th>Date & Time</th>
-                  <th>Vehicle Plate</th>
-                  <th>Route Name</th>
-                  <th>Fare Amount</th>
-                  <th>Status</th>
-                  <th>Violation Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentTrips.map((trip) => (
-                  <tr key={trip.id}>
-                    <td className="trip-id-cell">{trip.id}</td>
-                    <td>{trip.dateTime}</td>
-                    <td className="trip-vehicle-cell">{trip.vehiclePlate}</td>
-                    <td>{trip.gateName}</td>
-                    <td className="trip-fare-cell">
-                      {trip.fareAmount.toFixed(2)} EGP
-                    </td>
-                    <td>
-                      <span
-                        className={`trip-status-badge ${
-                          trip.status === "Paid"
-                            ? "trip-status-paid"
-                            : "trip-status-not-paid"
-                        }`}
-                      >
-                        {trip.status}
-                      </span>
-                    </td>
-                    <td className="trip-violation-cell">
-                      {trip.violationAmount > 0
-                        ? `${trip.violationAmount.toFixed(2)} EGP`
-                        : "-"}
-                    </td>
+            {loadingTrips ? (
+              <p style={{ padding: "2rem" }}>Loading trips…</p>
+            ) : (
+              <table className="trip-table">
+                <thead>
+                  <tr>
+                    <th>Trip ID</th>
+                    <th>Date & Time</th>
+                    <th>Vehicle Plate</th>
+                    <th>Route Name</th>
+                    <th>Fare Amount</th>
+                    <th>Status</th>
+                    <th>Violation Amount</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {currentTrips.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "2rem" }}>
+                        No trips found for this account or filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    currentTrips.map((trip) => (
+                      <tr key={trip.id}>
+                        <td className="trip-id-cell">{trip.id}</td>
+                        <td>{trip.dateTime}</td>
+                        <td className="trip-vehicle-cell">{trip.vehiclePlate}</td>
+                        <td>{trip.gateName}</td>
+                        <td className="trip-fare-cell">
+                          {Number(trip.fareAmount).toFixed(2)} EGP
+                        </td>
+                        <td>
+                          <span
+                            className={`trip-status-badge ${
+                              trip.status === "Paid"
+                                ? "trip-status-paid"
+                                : "trip-status-not-paid"
+                            }`}
+                          >
+                            {trip.status}
+                          </span>
+                        </td>
+                        <td className="trip-violation-cell">
+                          {trip.violationAmount > 0
+                            ? `${Number(trip.violationAmount).toFixed(2)} EGP`
+                            : "-"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </section>
 
-        {/* Pagination */}
         <div className="trip-pagination">
           <button
             type="button"

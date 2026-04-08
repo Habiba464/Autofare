@@ -21,6 +21,83 @@
   color: #6b7280;
 }
 
+.edit-profile-photo-card {
+  margin-bottom: 24px;
+}
+
+.edit-profile-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 16px;
+  line-height: 1.45;
+}
+
+.edit-profile-readonly {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin: 0;
+}
+
+.edit-profile-photo-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.edit-profile-photo-preview-wrap {
+  min-height: 120px;
+  min-width: 120px;
+}
+
+.edit-profile-photo-preview {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.edit-profile-photo-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.edit-profile-photo-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.edit-profile-photo-browse {
+  display: inline-block;
+  padding: 10px 18px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #bfdbfe;
+}
+
+.edit-profile-photo-browse:hover {
+  background: #dbeafe;
+}
+
+.edit-profile-photo-upload-btn {
+  margin: 0;
+}
+
 .edit-profile-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1.3fr);

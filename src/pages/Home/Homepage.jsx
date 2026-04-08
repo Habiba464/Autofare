@@ -6,7 +6,7 @@ import "./Homepage.css";
 
 // Import your video
 import heroVideo from "../../assets/videos/Intrance Video.mp4";
-import mustLogo from "../../assets/PicTures/Must_Without_BackGround.jpg";
+import mustLogo from "../../assets/react.svg";
 function Homepage() {
   const navigate = useNavigate();
   const [scrollY, setScrollY] = useState(0);

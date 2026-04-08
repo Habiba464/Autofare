@@ -35,6 +35,7 @@ function Login() {
       const response = await API.post(ENDPOINTS.LOGIN, {
         email: formData.email,
         password: formData.password,
+        role: activeTab === "admin" ? "admin" : "user",
       });
 
       if (response.status === 200) {

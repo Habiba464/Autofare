@@ -110,7 +110,15 @@ function Sidebar({ userData, role = "user" }) {
       <div className="sidebar-footer">
         <div className="sidebar-user-info">
           <div className="sidebar-user-avatar">
-            {getInitials(currentUserData.name)}
+            {currentUserData.photoUrl ? (
+              <img
+                src={currentUserData.photoUrl}
+                alt=""
+                className="sidebar-user-avatar-img"
+              />
+            ) : (
+              getInitials(currentUserData.name)
+            )}
           </div>
           <div>
             <h4>{currentUserData.name}</h4>
