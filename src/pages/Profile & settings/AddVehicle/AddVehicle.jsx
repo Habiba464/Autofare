@@ -20,6 +20,7 @@ function AddVehicle() {
   const [toast, setToast] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [platePreview, setPlatePreview] = useState(null);
 
   const userData = useMemo(
     () =>
@@ -45,6 +46,8 @@ function AddVehicle() {
       err.licensePlate = "Upload a license plate image.";
     } else if (!licensePlate.type.startsWith("image/")) {
       err.licensePlate = "Please upload an image file.";
+    } else if (licensePlate.size > 5 * 1024 * 1024) {
+      err.licensePlate = "File size must be less than 5MB.";
     }
     if (!vehicleType) err.vehicleType = "Select a vehicle type.";
     if (!vehicleModel.trim() || vehicleModel.trim().length < 2) {
@@ -107,17 +110,64 @@ function AddVehicle() {
                 <span className="add-vehicle-label-icon">🚗</span>
                 License Plate Number
               </label>
-              <input
-                id="license-plate"
-                type="file"
-                required
-                accept="image/*"
-                onChange={(e) => setLicensePlate(e.target.files?.[0] || null)}
-                className="add-vehicle-input"
-              />
+              <div className="file-upload-container">
+                <div className="file-upload-area" onClick={() => document.getElementById('license-plate').click()}>
+                  {platePreview ? (
+                    <div className="file-preview">
+                      <img src={platePreview} alt="License plate preview" className="preview-image" />
+                      <button
+                        type="button"
+                        className="remove-file-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLicensePlate(null);
+                          setPlatePreview(null);
+                          document.getElementById('license-plate').value = '';
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="upload-placeholder">
+                      <div className="upload-icon">📸</div>
+                      <p>Click to upload license plate image</p>
+                      <small>PNG, JPG, JPEG up to 5MB</small>
+                    </div>
+                  )}
+                </div>
+                <input
+                  id="license-plate"
+                  type="file"
+                  required
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file) {
+                      if (!file.type.startsWith("image/")) {
+                        setFieldErrors({...fieldErrors, licensePlate: "Please upload an image file."});
+                        return;
+                      }
+                      if (file.size > 5 * 1024 * 1024) {
+                        setFieldErrors({...fieldErrors, licensePlate: "File size must be less than 5MB."});
+                        return;
+                      }
+                      // Create preview
+                      const reader = new FileReader();
+                      reader.onload = (e) => setPlatePreview(e.target.result);
+                      reader.readAsDataURL(file);
+                    } else {
+                      setPlatePreview(null);
+                    }
+                    setLicensePlate(file);
+                    setFieldErrors({...fieldErrors, licensePlate: ""});
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </div>
               {licensePlate && (
                 <p className="add-vehicle-file-name">
-                  Selected file: {licensePlate.name}
+                  Selected: {licensePlate.name}
                 </p>
               )}
               {fieldErrors.licensePlate && (

@@ -52,18 +52,38 @@ function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [platePreview, setPlatePreview] = useState(null);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked, files } = e.target;
-    setFormData({
-      ...formData,
-      [name]:
-        type === "checkbox"
-          ? checked
-          : type === "file"
-          ? files[0]
-          : value,
-    });
+    if (type === "file" && files && files[0]) {
+      const file = files[0];
+      // Validate file
+      if (!file.type.startsWith("image/")) {
+        setError("Please select a valid image file.");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError("File size must be less than 5MB.");
+        return;
+      }
+
+      setFormData({
+        ...formData,
+        [name]: file,
+      });
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => setPlatePreview(e.target.result);
+      reader.readAsDataURL(file);
+      setError(""); // Clear any previous errors
+    } else {
+      setFormData({
+        ...formData,
+        [name]: type === "checkbox" ? checked : value,
+      });
+    }
   };
 
   const handleNextStep = (e) => {
@@ -333,24 +353,47 @@ function Signup() {
                     <label className="form-label" htmlFor="vehiclePlate">
                       License Plate Number
                     </label>
-                    <div className="input-wrapper">
-                      <span className="input-icon">🚗</span>
+                    <div className="file-upload-container">
+                      <div className="file-upload-area" onClick={() => document.getElementById('vehiclePlate').click()}>
+                        {platePreview ? (
+                          <div className="file-preview">
+                            <img src={platePreview} alt="License plate preview" className="preview-image" />
+                            <button
+                              type="button"
+                              className="remove-file-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFormData({...formData, vehiclePlate: null});
+                                setPlatePreview(null);
+                                document.getElementById('vehiclePlate').value = '';
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="upload-placeholder">
+                            <div className="upload-icon">📸</div>
+                            <p>Click to upload license plate image</p>
+                            <small>PNG, JPG, JPEG up to 5MB</small>
+                          </div>
+                        )}
+                      </div>
                       <input
                         type="file"
                         id="vehiclePlate"
                         name="vehiclePlate"
-                        className="form-input"
                         accept="image/*"
                         onChange={handleInputChange}
                         required
+                        style={{ display: 'none' }}
                       />
                     </div>
                     {formData.vehiclePlate && (
                       <p className="selected-file-name">
-                        Selected file: {formData.vehiclePlate.name}
+                        Selected: {formData.vehiclePlate.name}
                       </p>
                     )}
-
                   </div>
 
                   {/* Vehicle Type */}
