@@ -162,30 +162,6 @@
 /* ============================================
    TABS & INPUTS
    ============================================ */
-.login-tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 40px;
-  background: #f8fafc;
-  padding: 8px;
-  border-radius: 12px;
-}
-
-.tab-button {
-  flex: 1;
-  padding: 14px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 600;
-  color: #64748b;
-  transition: all 0.3s;
-}
-
-.tab-button.active {
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  color: white;
-}
 
 .form-group { margin-bottom: 20px; }
 

@@ -8,7 +8,6 @@ import "./Login.css";
 
 function Login() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("user");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -35,18 +34,12 @@ function Login() {
       const response = await API.post(ENDPOINTS.LOGIN, {
         email: formData.email,
         password: formData.password,
-        role: activeTab === "admin" ? "admin" : "user",
       });
 
       if (response.status === 200) {
         localStorage.setItem("token", response.data.access);
         localStorage.setItem("userName", response.data.name);
-
-        if (activeTab === "user") {
-          navigate("/dashboard");
-        } else {
-          navigate("/admin/dashboard");
-        }
+        navigate("/dashboard");
       }
     } catch (err) {
       const errorMsg = err.response?.data?.non_field_errors?.[0] || 
@@ -93,27 +86,8 @@ function Login() {
 
         <div className="login-form-section">
           <div className="form-wrapper">
-            <div className="login-tabs">
-              <button
-                type="button"
-                className={`tab-button ${activeTab === "user" ? "active" : ""}`}
-                onClick={() => setActiveTab("user")}
-              >
-                <span className="tab-label">User Account</span>
-              </button>
-              <button
-                type="button"
-                className={`tab-button ${activeTab === "admin" ? "active" : ""}`}
-                onClick={() => setActiveTab("admin")}
-              >
-                <span className="tab-label">Administrator</span>
-              </button>
-            </div>
-
             <div className="form-header">
-              <h2 className="form-title">
-                {activeTab === "user" ? "Welcome Back" : "Admin Portal"}
-              </h2>
+              <h2 className="form-title">Welcome Back</h2>
               <p className="form-subtitle">
                 Please enter your credentials to access your account.
               </p>
@@ -184,7 +158,7 @@ function Login() {
               </div>
 
               <button type="submit" className="submit-button" disabled={loading}>
-                <span>{loading ? "Processing..." : (activeTab === "user" ? "Sign In" : "Admin Login")}</span>
+                <span>{loading ? "Processing..." : "Sign In"}</span>
                 {!loading && <span className="button-arrow">→</span>}
               </button>
 
@@ -208,14 +182,12 @@ function Login() {
                 </button>
               </div>
               
-              {activeTab === "user" && (
-                <div className="signup-prompt">
-                  <p>
-                    Don't have an account?{" "}
-                    <a href="/signup" className="signup-link">Create Account</a>
-                  </p>
-                </div>
-              )}
+              <div className="signup-prompt">
+                <p>
+                  Don't have an account?{" "}
+                  <a href="/signup" className="signup-link">Create Account</a>
+                </p>
+              </div>
             </form>
 
             <div className="back-home">
