@@ -71,6 +71,12 @@
   color: #9ca3af;
 }
 
+.add-vehicle-file-name {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
 .add-vehicle-input:focus,
 .add-vehicle-select:focus {
   outline: none;

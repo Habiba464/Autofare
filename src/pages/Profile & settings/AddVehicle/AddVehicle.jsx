@@ -13,7 +13,7 @@ function AddVehicle() {
   const navigate = useNavigate();
   const { me, loading: meLoading } = useMe();
 
-  const [licensePlate, setLicensePlate] = useState("");
+  const [licensePlate, setLicensePlate] = useState(null);
   const [vehicleType, setVehicleType] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
   const [vehicleColor, setVehicleColor] = useState("");
@@ -41,10 +41,10 @@ function AddVehicle() {
 
   const validate = () => {
     const err = {};
-    const plate = licensePlate.trim().toUpperCase();
-    if (plate.length < 3) err.licensePlate = "Enter a valid license plate.";
-    else if (!/^[\w\s-]+$/i.test(plate)) {
-      err.licensePlate = "Plate contains invalid characters.";
+    if (!licensePlate) {
+      err.licensePlate = "Upload a license plate image.";
+    } else if (!licensePlate.type.startsWith("image/")) {
+      err.licensePlate = "Please upload an image file.";
     }
     if (!vehicleType) err.vehicleType = "Select a vehicle type.";
     if (!vehicleModel.trim() || vehicleModel.trim().length < 2) {
@@ -68,12 +68,12 @@ function AddVehicle() {
 
     setSubmitting(true);
     try {
-      await API.post(ENDPOINTS.VEHICLES, {
-        vehicleType,
-        licensePlate: licensePlate.trim(),
-        vehicleModel: vehicleModel.trim(),
-        vehicleColor: vehicleColor.trim(),
-      });
+      const payload = new FormData();
+      payload.append("vehicleType", vehicleType);
+      payload.append("licensePlate", licensePlate);
+      payload.append("vehicleModel", vehicleModel.trim());
+      payload.append("vehicleColor", vehicleColor.trim());
+      await API.post(ENDPOINTS.VEHICLES, payload);
       setToast({ type: "success", message: "Vehicle added successfully." });
       setTimeout(() => navigate("/dashboard/profile/edit"), 1000);
     } catch (err) {
@@ -109,13 +109,17 @@ function AddVehicle() {
               </label>
               <input
                 id="license-plate"
-                type="text"
+                type="file"
                 required
-                value={licensePlate}
-                onChange={(e) => setLicensePlate(e.target.value)}
+                accept="image/*"
+                onChange={(e) => setLicensePlate(e.target.files?.[0] || null)}
                 className="add-vehicle-input"
-                placeholder="e.g., ABC 1234"
               />
+              {licensePlate && (
+                <p className="add-vehicle-file-name">
+                  Selected file: {licensePlate.name}
+                </p>
+              )}
               {fieldErrors.licensePlate && (
                 <p className="add-vehicle-error">{fieldErrors.licensePlate}</p>
               )}

@@ -394,6 +394,12 @@
   color: #64748b;
 }
 
+.selected-file-name {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
 .password-toggle {
   position: absolute;
   right: 16px;

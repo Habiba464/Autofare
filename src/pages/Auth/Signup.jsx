@@ -37,7 +37,7 @@ function Signup() {
     nationalId: "",
 
     // Step 2: Vehicle Information
-    vehiclePlate: "",
+    vehiclePlate: null,
     vehicleType: "",
     vehicleModel: "",
     vehicleColor: "",
@@ -54,10 +54,15 @@ function Signup() {
   const [error, setError] = useState("");
 
   const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type, checked, files } = e.target;
     setFormData({
       ...formData,
-      [name]: type === "checkbox" ? checked : value,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : type === "file"
+          ? files[0]
+          : value,
     });
   };
 
@@ -99,19 +104,19 @@ function Signup() {
     setLoading(true);
     setError("");
     try {
-      const response = await API.post(ENDPOINTS.SIGNUP, {
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        nationalId: formData.nationalId,
-        vehiclePlate: formData.vehiclePlate,
-        vehicleType: formData.vehicleType,
-        vehicleModel: formData.vehicleModel,
-        vehicleColor: formData.vehicleColor,
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        agreeToTerms: formData.agreeToTerms,
-      });
+      const payload = new FormData();
+      payload.append("fullName", formData.fullName);
+      payload.append("email", formData.email);
+      payload.append("phone", formData.phone);
+      payload.append("nationalId", formData.nationalId);
+      payload.append("vehiclePlate", formData.vehiclePlate);
+      payload.append("vehicleType", formData.vehicleType);
+      payload.append("vehicleModel", formData.vehicleModel);
+      payload.append("vehicleColor", formData.vehicleColor);
+      payload.append("password", formData.password);
+      payload.append("confirmPassword", formData.confirmPassword);
+      payload.append("agreeToTerms", formData.agreeToTerms);
+      const response = await API.post(ENDPOINTS.SIGNUP, payload);
       if (response.status === 201 || response.status === 200) {
         localStorage.setItem("token", response.data.access);
         localStorage.setItem("userName", response.data.name);
@@ -331,16 +336,21 @@ function Signup() {
                     <div className="input-wrapper">
                       <span className="input-icon">🚗</span>
                       <input
-                        type="text"
+                        type="file"
                         id="vehiclePlate"
                         name="vehiclePlate"
                         className="form-input"
-                        placeholder="e.g., ABC 1234"
-                        value={formData.vehiclePlate}
+                        accept="image/*"
                         onChange={handleInputChange}
                         required
                       />
                     </div>
+                    {formData.vehiclePlate && (
+                      <p className="selected-file-name">
+                        Selected file: {formData.vehiclePlate.name}
+                      </p>
+                    )}
+
                   </div>
 
                   {/* Vehicle Type */}
